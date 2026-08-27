@@ -90,12 +90,94 @@ Mặc định: **LLM và Whisper trên GPU, chấm phát âm và TTS trên CPU.*
 | Redis + BullMQ | Không có việc nền nào đáng xếp hàng | Xử lý hàng loạt, hoặc nhiều người dùng |
 | S3 / MinIO | Thư mục trên đĩa, backup bằng cách copy | Cần truy cập từ nhiều máy |
 | Auth, hạn mức, chống lạm dụng | Chỉ có một người, và người đó là bạn | Mở cho người ngoài — **bắt buộc trước khi mở** |
-| Docker Compose nhiều service | `pnpm dev` cộng hai lệnh là xong | Deploy lên máy khác |
+| Docker cho Next.js và SQLite | Chỉ container hóa `speech-service` và Ollama — xem mục 3.1 | Deploy lên máy khác |
 | Huấn luyện đầu hồi quy GOPT | Xem mục 5 | Cần điểm số so được với chuẩn ngành |
 | Streak, XP, thông báo đẩy | Bạn tự biết mình có học hay không | Có người dùng thật cần động lực ngoài |
 | CI/CD, giám sát, cảnh báo | Máy ở ngay đây | Chạy trên máy chủ từ xa |
 
 Số thành phần phải vận hành: **từ khoảng mười hai xuống ba.** Đó là khác biệt giữa "dự án cuối tuần làm xong" và "dự án bỏ dở ở tuần thứ năm".
+
+### 3.1 Docker — cái gì vào container, cái gì không
+
+Câu trả lời ngắn: **không phải tất cả.** Docker giải quyết đúng một vấn đề trong dự án này, và tạo ra vấn đề mới ở chỗ khác.
+
+| Thành phần | Docker? | Vì sao |
+|---|---|---|
+| **speech-service** (Python) | ✅ **Có** | Đây là lý do duy nhất đáng dùng Docker ở đây. CUDA 12.x + cuDNN + ctranslate2 + onnxruntime cài trực tiếp lên máy là nguồn cơn của phần lớn những buổi tối mất trắng. Trong container thì phiên bản bị ghim chặt, hỏng thì xóa image làm lại |
+| **Ollama** | ✅ Có (hoặc cài thẳng) | Ảnh chính thức `ollama/ollama` chạy GPU tốt. Cài thẳng lên máy cũng dễ như nhau — chọn cái nào cũng được, đừng mất thời gian cân nhắc |
+| **Next.js** | ❌ **Không** | Đây là thứ bạn sửa mỗi ba mươi giây. Bind mount làm hot reload chậm đi thấy rõ, `node_modules` qua volume hay trục trặc. Chạy `pnpm dev` thẳng trên máy |
+| **SQLite** | ❌ Không | Nó là một file. Không có gì để container hóa |
+
+Nói cách khác: **container hóa thứ khó cài, chạy thẳng thứ hay sửa.**
+
+```
+docker compose up -d speech ollama     # dựng một lần, để đó
+pnpm dev                               # cái này chạy trên máy, sửa liên tục
+```
+
+Khung `docker/compose.yml` tương ứng — ngắn đúng mức cần thiết:
+
+```yaml
+services:
+  ollama:
+    image: ollama/ollama
+    ports: ["11434:11434"]
+    volumes: [ollama-models:/root/.ollama]   # 2,5GB, đừng nướng vào image
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m                 # giữ model thường trú khi đang học
+    deploy:
+      resources: { reservations: { devices: [{ driver: nvidia, count: 1,
+                   capabilities: [gpu] }] } }
+
+  speech:
+    build: ../services/speech-service        # nền nvidia/cuda:12.x-cudnn-runtime
+    ports: ["8000:8000"]
+    volumes:
+      - hf-cache:/root/.cache/huggingface    # Whisper + wav2vec2 + Kokoro
+      - ../data:/data                        # audio, dùng chung với app trên máy
+    environment:
+      WHISPER_MODEL: small
+      WHISPER_COMPUTE_TYPE: int8             # KHÔNG phải int8_float16 — Pascal
+    deploy:
+      resources: { reservations: { devices: [{ driver: nvidia, count: 1,
+                   capabilities: [gpu] }] } }
+
+volumes:
+  ollama-models:
+  hf-cache:
+```
+
+Không có service `web` và không có service database — cả hai chạy thẳng trên máy.
+
+### 3.2 Bốn điều dễ vấp khi cho GPU vào Docker
+
+**1. Container không chia được VRAM.** Đây là hiểu nhầm phổ biến nhất. Hai container cùng thấy nguyên chiếc 1060 và cùng cấp phát từ một khối 6GB duy nhất — Docker không hề cô lập VRAM. Ngân sách ở mục 2 vẫn nguyên giá trị, và nếu `speech-service` báo hết bộ nhớ thì thủ phạm gần như chắc chắn là Ollama đang giữ model. Đừng đi tìm lỗi trong container.
+
+**2. Ảnh nền phải là CUDA 12.x.** `nvidia/cuda:12.x.x-cudnn-runtime-ubuntu22.04`. Tuyệt đối không dùng nhánh 13.x — đã bỏ Pascal, và lỗi hiện ra sẽ rất khó đoán chứ không nói thẳng là "card của bạn không được hỗ trợ". Cần **NVIDIA Container Toolkit** trên máy chủ.
+
+**3. Trọng số model để ở volume, đừng nướng vào image.** Qwen3-4B là 2,5GB, Whisper `small` khoảng 0,5GB. Nướng vào image thì mỗi lần sửa một dòng Python là tải lại từ đầu. Dùng named volume cho `/root/.ollama` và bind mount cho thư mục cache model.
+
+**4. `OLLAMA_KEEP_ALIVE`.** Mặc định Ollama nhả model khỏi VRAM sau 5 phút không dùng — nghĩa là lượt nói đầu tiên sau khi nghỉ sẽ đợi nạp lại vài giây. Đặt `OLLAMA_KEEP_ALIVE=30m` để giữ model thường trú trong lúc học. Ngân sách VRAM đã chừa đủ chỗ cho việc này.
+
+Một tin tốt: **không container nào cần truy cập micro.** Trình duyệt ghi âm rồi POST lên — phần khó nhất của việc container hóa ứng dụng âm thanh không tồn tại ở đây.
+
+### 3.3 Giữ ảnh speech-service nhỏ: không cần PyTorch
+
+Điều này đáng nói riêng vì nó tiết kiệm vài GB và khá nhiều thời gian build:
+
+- **faster-whisper** chạy trên **CTranslate2**, không phải PyTorch.
+- **wav2vec2** cho chấm phát âm chạy qua **ONNX Runtime**.
+- **Kokoro** cũng là **ONNX**.
+
+Cả ba đều không cần PyTorch. Và vì wav2vec2 với Kokoro đã đẩy xuống CPU (mục 2), chỉ mình CTranslate2 cần CUDA. Kết quả: ảnh chỉ gồm CUDA runtime + cuDNN + ctranslate2 + onnxruntime bản CPU + FastAPI — cỡ **2–3GB** thay vì 8GB nếu kéo cả PyTorch vào.
+
+Nếu thấy mình đang viết `pip install torch` trong Dockerfile, hãy dừng lại và kiểm tra xem thật sự cần nó cho việc gì.
+
+### 3.4 Nếu chạy trên Windows
+
+Docker Desktop dùng backend WSL2, và GPU đi qua driver NVIDIA trên máy chủ Windows. Chạy được, nhưng thêm một lớp trung gian nữa, và **Pascal + WSL2 + CUDA 12.x là tổ hợp ít người kiểm chứng nhất** trong tất cả các tổ hợp ở đây.
+
+Nếu vấp phải rắc rối GPU trên Windows, phương án gọn hơn là **làm toàn bộ bên trong WSL2 mà không dùng Docker** — cài Python và Ollama thẳng trong Ubuntu của WSL2. Đổi cách cô lập môi trường (Docker → WSL2) chứ không mất gì.
 
 ---
 
