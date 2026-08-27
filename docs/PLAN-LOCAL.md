@@ -306,6 +306,57 @@ Bốn ranh giới cần giữ ngay từ đầu, mỗi cái tốn vài phút bây
 
 Không cần làm gì hơn thế. Mọi trừu tượng khác ở giai đoạn này đều là chi phí trả trước cho một tương lai có thể không tới.
 
+### 10.1 Khi nào nên đổi GPU, và đổi sang cái gì
+
+**Trước hết: chưa cần đổi.** Chiếc 1060 chạy được trọn vẹn stack ở kế hoạch này. Hãy xây xong đã, rồi mua card khi đụng một bức tường cụ thể — chứ không phải mua trước để yên tâm.
+
+Bốn bức tường thật sự đáng để móc ví:
+
+1. Muốn dùng **Whisper `large-v3-turbo`** vì `small` chép sai quá nhiều.
+2. Qwen3-4B nghe ngu, muốn lên **8B hoặc 14B**.
+3. Muốn **fine-tune Whisper cho giọng Việt của mình** — việc này cần 12GB trở lên và cần Tensor Core.
+4. Muốn dùng **vLLM** (nhanh hơn llama.cpp đáng kể) — cần compute capability ≥ 7.0.
+
+#### Hai ngưỡng kỹ thuật quyết định mọi thứ
+
+- **CC ≥ 7.0 (Turing trở lên)** — mở khóa vLLM, và có **Tensor Core** nên FP16 nhanh thật chứ không phải nhanh trên giấy. Đây là ngưỡng quan trọng nhất.
+- **CC ≥ 7.5** — nằm trong phạm vi CUDA 13 vẫn hỗ trợ. Mua card CC 7.0 (chỉ có Titan V, V100) thì lại rơi vào đúng cái bẫy đang muốn thoát.
+
+#### Bảng so sánh
+
+Sắp theo giá tăng dần trên thị trường cũ. Không ghi giá cụ thể vì giá thay đổi liên tục và tùy nơi bán — hãy tự tra ở chợ đồ cũ trong nước.
+
+| Card | VRAM | Băng thông | CC | Điện | Đánh giá |
+|---|---|---|---|---|---|
+| *GTX 1060 (đang có)* | *6 GB* | *192 GB/s* | *6.1* | *120W* | *Mốc so sánh* |
+| **RTX 2060 12GB** | 12 GB | 336 GB/s | 7.5 | 185W | **Món hời ít người biết.** Bản 12GB hiếm, nhưng đủ VRAM và đã qua ngưỡng 7.5. Rẻ hơn 3060 |
+| **RTX 3060 12GB** | 12 GB | 360 GB/s | 8.6 | 170W | **Lựa chọn mặc định.** Sẵn hàng, mọi thứ đều chạy: vLLM, AWQ/Marlin, bf16, flash-attention |
+| RTX 2080 Ti 22GB (mod) | 22 GB | 616 GB/s | 7.5 | 250W | VRAM và băng thông rất đáng tiền, nhưng là **card độ** — không bảo hành, chất lượng tùy thợ. Biết rủi ro thì đáng cân nhắc |
+| **RTX 4060 Ti 16GB** | 16 GB | 288 GB/s | 8.9 | 165W | Nhiều VRAM nhất trong hàng mới giá vừa phải. Băng thông hẹp (bus 128-bit) nên sinh token không nhanh như con số VRAM gợi ý |
+| RTX 3090 24GB | 24 GB | 936 GB/s | 8.6 | 350W | Đỉnh của tầm "vẫn còn hợp lý". Cần nguồn 750W+ |
+
+#### Ba thứ nên tránh, và vì sao
+
+| Tránh | Vì sao |
+|---|---|
+| **Tesla P40 24GB** | 24GB giá rẻ nghe rất hấp dẫn — nhưng nó là **Pascal CC 6.1, y hệt chiếc 1060**. Không Tensor Core, FP16 vô dụng, CUDA 13 đã bỏ, không có cổng xuất hình, cần chế tản nhiệt. Bỏ tiền để gặp lại đúng vấn đề đang muốn thoát |
+| **Card 8GB** (3060 Ti, 3070) | Nhanh hơn 1060 nhiều, nhưng với công việc này **VRAM quan trọng hơn tốc độ**. Đừng đổi 6GB lấy 8GB |
+| **AMD và Intel Arc** | Lý do rất cụ thể cho dự án này: **faster-whisper chạy trên CTranslate2, mà CTranslate2 chỉ hỗ trợ CUDA.** llama.cpp thì chạy được qua Vulkan, nhưng tầng STT sẽ phải viết lại. 16GB giá rẻ của Arc A770 không bù được khoản đó |
+
+#### Đổi sang 12GB thì được gì cụ thể
+
+| | GTX 1060 6GB | RTX 3060 12GB |
+|---|---|---|
+| Mô hình hội thoại | Qwen3-4B `Q4_K_M` | **Qwen3-14B `Q4_K_M`**, hoặc 8B với ngữ cảnh dài |
+| Whisper | `small` | **`large-v3-turbo`** |
+| Tốc độ sinh token | ~22 tok/s | ~40 tok/s với 4B, ~25 tok/s với 8B |
+| vLLM | ❌ | ✅ |
+| Fine-tune Whisper | ❌ | ✅ |
+
+**Kiểm tra nguồn trước khi mua.** Chiếc 1060 ăn 120W; RTX 3060 ăn 170W và cần đầu cấp 8-pin, khuyến nghị nguồn 550W. Với RTX 3090 thì cần 750W trở lên — nhiều khi tiền nguồn mới làm hỏng bài toán "giá rẻ".
+
+**Tóm lại:** nếu chỉ mua một lần và không muốn nghĩ nữa, lấy **RTX 3060 12GB**. Nếu tìm được **RTX 2060 12GB** rẻ hơn đáng kể thì cũng tốt gần bằng. Còn nếu chưa đụng bức tường nào trong bốn cái ở trên thì **chưa cần mua gì cả**.
+
 ---
 
 ## 11. Ba việc làm trước tiên
