@@ -3,6 +3,10 @@
 > Tài liệu định hướng sản phẩm & kỹ thuật cho dự án **CommunicationLearning**.
 > Phiên bản 1.1 — cập nhật 2026-08-27. Thay đổi so với v1.0: **toàn bộ mô hình AI chuyển sang
 > mã nguồn mở, tự host**. Kéo theo thay đổi ở kiến trúc, lộ trình (12 → 16 tuần) và cơ cấu chi phí.
+>
+> ⚠️ **Đây là kế hoạch cho bản nhiều người dùng, chạy trên GPU đời mới (Ampere trở lên).**
+> Bản đang thi công hiện tại là [`PLAN-LOCAL.md`](./PLAN-LOCAL.md) — chạy trên máy cá nhân
+> (Ryzen 5 5600 + GTX 1060 6GB), phục vụ một người. Tài liệu này là đích đến, không phải việc của tuần này.
 
 ---
 
