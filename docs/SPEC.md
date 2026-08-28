@@ -114,12 +114,30 @@ Ngưỡng cảnh báo: nếu `nvidia-smi` báo dùng quá **5,2 GB** thì có g�
 ./content/*.yaml           Nội dung bài học, nguồn sự thật
 ```
 
-Bốn ranh giới bắt buộc giữ (chi tiết ở `PLAN-LOCAL.md` mục 10):
+Năm ranh giới bắt buộc giữ (chi tiết ở `PLAN-LOCAL.md` mục 10):
 
 1. Mọi lời gọi STT / chấm phát âm / TTS đi qua interface **`SpeechProvider`**.
-2. Prisma `provider = "sqlite"`, tránh cú pháp SQL riêng của SQLite.
-3. Mọi đường dẫn audio đi qua module **`storage`**, không rải `fs.writeFile`.
-4. Nội dung ở **`content/*.yaml`**, không nằm trong code.
+2. Mọi lời gọi LLM đi qua interface **`LlmProvider`** — xem mục 6.1.
+3. Prisma `provider = "sqlite"`, tránh cú pháp SQL riêng của SQLite.
+4. Mọi đường dẫn audio đi qua module **`storage`**, không rải `fs.writeFile`.
+5. Nội dung ở **`content/*.yaml`**, không nằm trong code.
+
+### 6.1 Đổi model về sau — cái gì dễ, cái gì không
+
+Đổi **file model** thì dễ: một biến môi trường, một lệnh `pull`. Nhưng có bốn thứ rò rỉ ra ngoài lớp đó, và nếu không chặn từ đầu thì mỗi lần đổi model là một buổi tối gỡ rối.
+
+| Thứ rò rỉ | Chặn bằng |
+|---|---|
+| **Prompt** — mỗi dòng model phản ứng khác nhau với cùng một chỉ dẫn | Để prompt trong `prompts/*.md`, không nhúng chuỗi trong code. Đổi model thì sửa file, không sửa logic |
+| **Cách ép JSON** — mỗi backend một kiểu (`format: json`, JSON schema, GBNF) | Dùng **GBNF grammar**, thứ độc lập với model. Ra khỏi `LlmProvider` là **validate bằng Zod**, sai schema thì rơi về câu mẫu viết tay của nút trạng thái |
+| **Đầu ra thừa** — khối `<think>` là một ví dụ, model khác có kiểu khác | `LlmProvider` **chuẩn hóa đầu ra**: cắt mọi thứ ngoài schema rồi mới trả ra. Không để lớp nghiệp vụ biết model nào đang chạy |
+| **Ngân sách VRAM** — không phải vấn đề code | Model thay thế phải nằm trong **≤ 3,5GB** (Linux) / **≤ 2,8GB** (Windows). Vượt là không đổi được, dù code sạch tới đâu |
+
+**Thứ khó nhất không nằm trong bảng trên:** đổi model thì dễ, nhưng **biết được model mới tốt hơn hay tệ hơn** thì không — trừ khi có cái để đo.
+
+Vì vậy ở **cuối tuần 3**, khi dựng tầng hội thoại, làm luôn `eval/cases.json`: **30–50 ví dụ** dạng `{câu người học nói, nhánh đúng, câu sửa mong đợi}` cộng một script chạy hết và in ra tỉ lệ phân nhánh đúng. Mất khoảng một tiếng.
+
+Có nó rồi thì đổi model là **một thí nghiệm 10 phút có con số ở cuối**, thay vì một cảm giác mơ hồ rằng "hình như lần này nói hay hơn". Đây mới là thứ khiến câu "đổi model sau cũng được" thành sự thật.
 
 ---
 
@@ -143,7 +161,7 @@ Cả ba đạt thì bắt đầu. Không đạt thì sửa trước, đừng xâ
 |---|---|
 | **CT1** — Nghe và nói | Nói một câu, thấy nó hiện ra thành chữ; bấm nút nghe được giọng mẫu |
 | **CT2** — Chấm phát âm | Đọc sai cố ý một từ, đúng từ đó đỏ lên. Ngưỡng đã hiệu chỉnh từ 20 câu của chính mình |
-| **CT3** — Hội thoại | Chạy trọn 6 lượt tình huống gọi cà phê, không bí, không câu nào quá 12 từ |
+| **CT3** — Hội thoại | Chạy trọn 6 lượt tình huống gọi cà phê, không bí, không câu nào quá 12 từ. **Kèm `eval/cases.json` 30–50 ví dụ và script đo tỉ lệ phân nhánh đúng** |
 | **CT4** — SRS | Thẻ đến hạn hiện ra, ôn xong trong 5 phút, lịch ôn tiếp theo đúng theo FSRS |
 
 Độ trễ mục tiêu mỗi lượt: **p95 ≤ 3 giây**. Nếu vượt, xử lý theo thứ tự: bật tái dùng KV cache → sinh sẵn TTS cho câu kịch bản → hạ Whisper xuống `base`.

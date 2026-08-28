@@ -301,9 +301,10 @@ Tiền mặt: **0 đồng.** Phần cứng đã có, mọi mô hình đều tả
 
 ## 10. Viết sao để sau này không phải đập đi
 
-Bốn ranh giới cần giữ ngay từ đầu, mỗi cái tốn vài phút bây giờ và tiết kiệm vài ngày sau này:
+Năm ranh giới cần giữ ngay từ đầu, mỗi cái tốn vài phút bây giờ và tiết kiệm vài ngày sau này:
 
 1. **Một interface `SpeechProvider`** che mọi lời gọi STT / chấm phát âm / TTS. Đổi model, đổi sang API, đổi máy — sửa một file.
+1b. **Một interface `LlmProvider`** che mọi lời gọi LLM, tự chuẩn hóa đầu ra và ép JSON bằng GBNF. Prompt để trong `prompts/*.md`, không nhúng vào code. Chi tiết ở `SPEC.md` mục 6.1.
 2. **Prisma với `provider = "sqlite"`.** Chuyển sang Postgres là đổi một dòng `datasource` cộng chạy lại migration. Chỉ cần tránh dùng cú pháp SQL riêng của SQLite.
 3. **Đường dẫn audio đi qua một module `storage`** thay vì rải `fs.writeFile` khắp nơi. Đổi sang S3 là thay phần thân module đó.
 4. **Nội dung nằm trong `content/*.yaml`, không nằm trong code.** Đây cũng là thứ khiến việc thêm tình huống lúc rảnh trở nên dễ chịu.
