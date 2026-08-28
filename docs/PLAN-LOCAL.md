@@ -1,7 +1,11 @@
 # Giai đoạn 0 — Bản chạy trên máy cá nhân, phục vụ một người
 
 > Kế hoạch thi công cho cấu hình **Ryzen 5 5600 · GTX 1060 6GB · 32GB RAM**, người dùng duy nhất là tác giả.
-> Lập ngày 2026-08-27. Đây là bản **thay thế** cho v1.1 ở giai đoạn hiện tại, không phải bản rút gọn tạm bợ:
+> **Đã chốt ngày 2026-08-27 — thi công trên phần cứng hiện có, không mua GPU.**
+> Bản đặc tả khóa cứng (phiên bản, tên model, giá trị cấu hình, ngưỡng nghiệm thu) nằm ở [`SPEC.md`](./SPEC.md);
+> tài liệu này giữ phần lý do đằng sau từng lựa chọn.
+>
+> Đây là bản **thay thế** cho v1.1 ở giai đoạn hiện tại, không phải bản rút gọn tạm bợ:
 > mọi lựa chọn dưới đây đều là lựa chọn đúng cho ràng buộc thật, và được viết sao cho lên quy mô sau này
 > không phải đập đi làm lại. Kế hoạch nhiều người dùng nằm ở [`PLAN.md`](./PLAN.md).
 
@@ -52,7 +56,7 @@ Mặc định: **LLM và Whisper trên GPU, chấm phát âm và TTS trên CPU.*
 
 ### Vì sao đẩy chấm phát âm và TTS xuống CPU là lựa chọn đúng, không phải nhượng bộ
 
-- **wav2vec2 cỡ base** (~95M) chạy ONNX Runtime trên 6 nhân Zen 3 xử lý 5 giây audio trong khoảng nửa giây. Nó chạy **song song** với Whisper trên GPU, nên không cộng vào tổng độ trễ.
+- **wav2vec2 nhận âm vị**, chạy ONNX Runtime trên 6 nhân Zen 3, xử lý 5 giây audio trong khoảng nửa giây. Nó chạy **song song** với Whisper trên GPU nên không cộng vào tổng độ trễ. Điều kiện: phải **lượng tử hóa động sang INT8** — mô hình gốc là bản large ~317M, để nguyên FP32 thì mất tới 1,5 giây, quá chậm.
 - **Kokoro-82M** trên CPU đủ nhanh, và quan trọng hơn: **hầu hết câu đều là cache hit**, vì nội dung có kịch bản. TTS lúc chạy là trường hợp hiếm chứ không phải mặc định.
 - 32GB RAM khiến việc này gần như miễn phí. Trong khi 6GB VRAM là tài nguyên khan hiếm nhất — cái gì không bắt buộc phải ở trên đó thì đừng để nó ở đó.
 
@@ -187,7 +191,7 @@ Nếu vấp phải rắc rối GPU trên Windows, phương án gọn hơn là **
 |---|---|---|---|---|
 | Hội thoại | **Qwen3-4B-Instruct** `Q4_K_M` (GGUF) | ~2,5 GB | GPU | Apache 2.0 |
 | Chép lời | **faster-whisper `small`**, `compute_type="int8"` | ~0,6 GB | GPU | MIT |
-| Chấm phát âm | **wav2vec2 base** fine-tune nhận âm vị, ONNX | ~0,4 GB RAM | CPU | Apache 2.0 |
+| Chấm phát âm | **wav2vec2** nhận âm vị (`lv-60-espeak`), ONNX **INT8** | ~0,32 GB RAM | CPU | Apache 2.0 |
 | Giọng đọc | **Kokoro-82M** ONNX | ~0,3 GB RAM | CPU | Apache 2.0 |
 | Cắt tiếng nói | **Silero VAD** ONNX | ~0,05 GB | Trình duyệt | MIT |
 
