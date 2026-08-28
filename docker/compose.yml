@@ -1,0 +1,36 @@
+# Chỉ container hóa speech-service.
+#
+# Ollama chạy NATIVE trên Windows (trình cài đặt chính thức) — GPU đi thẳng qua
+# driver Windows, không qua WSL2, không qua Docker. Xem docs/SPEC.md mục 9.
+#
+# Next.js chạy native bằng `pnpm dev`.
+
+services:
+  speech:
+    build:
+      context: ../services/speech
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Named volume, nằm trong WSL2 — KHÔNG bind mount từ ổ Windows.
+      # Bind mount qua ranh giới Windows/WSL2 rất chậm (SPEC mục 9.2).
+      - model-cache:/cache
+    environment:
+      WHISPER_MODEL: small
+      WHISPER_DEVICE: cuda
+      WHISPER_COMPUTE_TYPE: int8   # KHÔNG phải int8_float16 — Pascal
+      WHISPER_LANGUAGE: en
+      TTS_VOICE: af_heart
+      TTS_SPEED: "0.85"
+      OMP_NUM_THREADS: "5"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  model-cache:

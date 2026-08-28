@@ -1,0 +1,14 @@
+{
+  "name": "communication-learning",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "typecheck": "pnpm --filter web typecheck",
+    "db:push": "pnpm --filter web db:push",
+    "speech:up": "docker compose -f docker/compose.yml up -d speech",
+    "speech:logs": "docker compose -f docker/compose.yml logs -f speech",
+    "speech:down": "docker compose -f docker/compose.yml down"
+  }
+}

@@ -8,13 +8,25 @@ mô hình mã nguồn mở** trên máy cá nhân. Người dùng hiện tại: 
 
 ## Trạng thái
 
-**Đã chốt kế hoạch, chưa bắt đầu thi công.** Chạy trên phần cứng hiện có — Ryzen 5 5600 ·
-GTX 1060 6GB · 32GB RAM — không mua GPU mới.
+**Cuối tuần 1 đã xong** — ghi âm → chép lời → nghe giọng mẫu.
+Chạy trên phần cứng hiện có: Ryzen 5 5600 · GTX 1060 6GB · 32GB RAM · **Windows**.
+
+```powershell
+pnpm install
+pnpm speech:up     # speech-service trong Docker
+pnpm db:push
+pnpm dev           # http://localhost:3000
+```
+
+Hướng dẫn đầy đủ, kể cả bước tải trọng số Kokoro: [`docs/SETUP-WINDOWS.md`](docs/SETUP-WINDOWS.md).
+
+Tiếp theo: cuối tuần 2 — chấm phát âm bằng GOP.
 
 ## Tài liệu
 
 | Tài liệu | Nội dung |
 |---|---|
+| **[SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md)** | **Cách chạy.** Chuẩn bị máy, dựng speech-service, nghiệm thu, xử lý trục trặc |
 | **[SPEC.md](docs/SPEC.md)** | **Đặc tả đã chốt.** Phiên bản ghim, tên model chính xác, giá trị cấu hình, ngân sách VRAM, ngưỡng nghiệm thu. Đọc cái này khi thi công |
 | [PLAN-LOCAL.md](docs/PLAN-LOCAL.md) | Lý do đằng sau từng lựa chọn: giới hạn Pascal, ranh giới Docker, lộ trình 4 cuối tuần, hướng nâng cấp GPU sau này |
 | [MODEL-RESEARCH.md](docs/MODEL-RESEARCH.md) | Khảo sát mô hình 8/2026: vì sao chọn Qwen3-4B-Instruct-2507, vì sao loại Gemma 4 E4B và các model chuyên Đông Nam Á |
@@ -30,6 +42,15 @@ wav2vec2 + GOP, ONNX INT8 (CPU) · Kokoro-82M (CPU) · Silero VAD (trình duyệ
 > GTX 1060 là Pascal (CC 6.1): **vLLM không chạy** (cần ≥ 7.0) và **CUDA 13 đã bỏ Pascal** —
 > ghim CUDA 12.4. Chi tiết ở `docs/SPEC.md` mục 2.
 
-## Bắt đầu
+## Cấu trúc
 
-Ba phép thử ở `docs/SPEC.md` mục 7 — làm trước khi viết dòng code nào.
+```
+apps/web/           Next.js 15 — UI, API routes, Prisma/SQLite. Chạy native Windows
+services/speech/    FastAPI — faster-whisper, Kokoro. Chạy trong Docker, stateless
+docker/compose.yml  Chỉ speech-service. Ollama native, Next.js native
+data/               app.db, audio/, tts-cache/ — do Next.js sở hữu
+docs/               Kế hoạch và đặc tả
+```
+
+Hai ranh giới quan trọng nhất, giữ từ đầu để đổi model về sau không phải viết lại:
+`apps/web/src/lib/speech.ts` (`SpeechProvider`) và `apps/web/src/lib/storage.ts`.

@@ -182,8 +182,64 @@ Khóa lại để khỏi bàn lại giữa chừng:
 
 ---
 
-## 9. Khác biệt theo hệ điều hành
+## 9. Windows — chốt cách chạy
 
-**Linux** — đường đi thẳng nhất. Cài NVIDIA Container Toolkit, `docker compose up -d speech ollama`, `pnpm dev`. Hết.
+Máy đích chạy **Windows**. Ba process đặt ở ba nơi khác nhau, và đây là lựa chọn có chủ đích:
 
-**Windows** — Docker Desktop với backend WSL2, GPU đi qua driver trên host. Trừ thêm ~1GB VRAM cho desktop và tắt tăng tốc phần cứng ở trình duyệt dùng để mở app. Nếu vấp rắc rối GPU trong Docker, chuyển sang phương án cài Python và Ollama **thẳng trong WSL2, không dùng Docker** — đổi cách cô lập môi trường, không mất gì trong đặc tả này.
+| Process | Chạy ở đâu | Vì sao |
+|---|---|---|
+| **Ollama** | **Native Windows** (trình cài đặt chính thức) | GPU đi thẳng qua driver Windows, **không qua WSL2, không qua Docker**. Bớt được hẳn một lớp — và đây là lớp hay hỏng nhất |
+| **speech-service** | **Docker Desktop** (backend WSL2) | Mớ CUDA + cuDNN + ctranslate2 vẫn nên nhốt trong container |
+| **Next.js** | **Native Windows**, `pnpm dev` | Thứ sửa liên tục, không container hóa |
+
+### 9.1 Ngân sách VRAM trên Windows
+
+Desktop Windows và trình duyệt ăn thêm VRAM, nên bảng ở mục 4 phải trừ đi:
+
+| | |
+|---|---|
+| Stack (LLM + KV + Whisper + CUDA context) | 3,8 GB |
+| Desktop Windows + DWM | ~0,5 GB |
+| Trình duyệt có tăng tốc phần cứng | ~0,5 GB |
+| **Tổng** | **~4,8 / 6 GB** — còn ~1,2 GB đệm |
+
+**Bắt buộc:** tắt tăng tốc phần cứng ở trình duyệt dùng để mở app (Chrome/Edge: Settings → System → tắt *Use graphics acceleration when available*). Việc này trả lại ~0,5GB và là cách rẻ nhất để nới đệm.
+
+Ngưỡng cảnh báo trên Windows: `nvidia-smi` báo quá **5,5 GB** là cần xem lại.
+
+### 9.2 Không bind mount thư mục audio
+
+Bind mount từ ổ Windows vào container WSL2 đi qua lớp dịch file rất chậm. Nên **bỏ hẳn**:
+
+- `speech-service` **không đụng vào đĩa** — nhận bytes audio trong thân request, trả JSON hoặc bytes audio.
+- Next.js sở hữu toàn bộ đĩa: `data/app.db`, `data/audio/`, `data/tts-cache/` đều nằm trên ổ Windows, do Node ghi trực tiếp.
+- Chỉ có **một** volume Docker: cache trọng số model, và nó là **named volume** nằm trong WSL2 chứ không phải thư mục Windows.
+
+Đổi lại chút băng thông localhost (file audio 5 giây chỉ ~50KB) để bỏ hẳn điểm chậm nhất của Docker trên Windows. Đây cũng khiến `speech-service` thành stateless — dễ khởi động lại, dễ thay thế.
+
+### 9.3 Giới hạn RAM cho WSL2
+
+Docker Desktop qua WSL2 có thể ngốn dần RAM. Tạo `C:\Users\<tên>\.wslconfig`:
+
+```ini
+[wsl2]
+memory=10GB
+processors=6
+swap=2GB
+```
+
+10GB là đủ rộng cho `speech-service`, và chừa phần lớn 32GB cho Windows, trình duyệt, Next.js và Ollama.
+
+### 9.4 Vặt nhưng hay mất thời gian
+
+- **CRLF.** Repo có script chạy trong container Linux — cần `.gitattributes` ép `LF` cho `*.sh`, nếu không container sẽ báo lỗi kiểu `bad interpreter`.
+- **`OLLAMA_KEEP_ALIVE`** trên Windows đặt bằng biến môi trường hệ thống (System Properties → Environment Variables), rồi khởi động lại Ollama. Đặt trong terminal chỉ có tác dụng cho phiên đó.
+- **Ollama nghe ở `127.0.0.1:11434`** trên Windows, còn Next.js cũng chạy native Windows nên gọi thẳng được. Riêng `speech-service` trong container thì gọi ra host bằng `host.docker.internal` — nhưng theo mục 9.2 nó không cần gọi Ollama, nên không phát sinh vấn đề.
+
+### 9.5 Nếu vẫn vấp GPU trong Docker
+
+Pascal + WSL2 + CUDA 12.x là tổ hợp ít người kiểm chứng. Nếu `speech-service` không thấy GPU sau khi đã cài NVIDIA Container Toolkit trong WSL2:
+
+1. Thử trước: `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`.
+2. Không được thì **bỏ Docker cho speech-service**, cài Python 3.12 thẳng trong Ubuntu của WSL2 và chạy uvicorn ở đó. Đổi cách cô lập môi trường, không mất gì trong đặc tả này.
+3. Vẫn không được thì cho `speech-service` **chạy Whisper trên CPU** (`WHISPER_DEVICE=cpu`). Chậm hơn khoảng 3 lần nhưng vẫn dùng được, và không chặn tiến độ.

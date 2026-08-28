@@ -1,0 +1,14 @@
+node_modules/
+.next/
+dist/
+__pycache__/
+*.pyc
+.venv/
+.env.local
+.env*.local
+data/*.db
+data/*.db-journal
+data/audio/
+data/tts-cache/
+models/
+*.tsbuildinfo

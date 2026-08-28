@@ -1,0 +1,26 @@
+// Cuối tuần 1 chỉ cần lưu lại từng lượt ghi âm.
+// Các bảng Scenario / Card / CardState sẽ thêm ở cuối tuần 3 và 4,
+// theo đúng mô hình dữ liệu trong docs/PLAN-LOCAL.md mục 8.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Recording {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+
+  audioKey   String // khóa trong module storage, không phải đường dẫn tuyệt đối
+  durationMs Int?
+
+  text       String? // bản chép lời
+  sttModel   String? // model nào tạo ra text này — cần khi đổi model về sau
+  latencyMs  Int? // đo từ lúc nhận request tới lúc có text
+
+  @@index([createdAt])
+}
