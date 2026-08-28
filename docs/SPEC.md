@@ -12,7 +12,7 @@
 |---|---|
 | Phần cứng | Ryzen 5 5600 · **GTX 1060 6GB** · 32GB RAM. **Không mua GPU mới** |
 | Người dùng | 1 (tác giả). Không có auth, không có hạn mức |
-| LLM | Qwen3-4B `Q4_K_M` qua Ollama, chạy GPU |
+| LLM | **Qwen3-4B-Instruct-2507** `Q4_K_M`, chạy GPU. Bản *không suy nghĩ* |
 | STT | faster-whisper `small`, `compute_type="int8"`, chạy GPU |
 | Chấm phát âm | wav2vec2 phoneme + GOP thô, ONNX INT8, chạy **CPU** |
 | TTS | Kokoro-82M ONNX, chạy **CPU**, cache-first |
@@ -51,7 +51,7 @@ docker run --rm --gpus all \
 
 | Vai trò | Định danh | Kích thước | Chạy ở |
 |---|---|---|---|
-| LLM | `qwen3:4b` (Ollama, mặc định `Q4_K_M`) | ~2,5 GB VRAM | GPU |
+| LLM | `Qwen3-4B-Instruct-2507` `Q4_K_M` — GGUF từ `unsloth/Qwen3-4B-Instruct-2507-GGUF` | ~2,5 GB VRAM | GPU |
 | STT | `Systran/faster-whisper-small` | ~0,6 GB VRAM | GPU |
 | Chấm phát âm | `facebook/wav2vec2-lv-60-espeak-cv-ft` | ~0,32 GB RAM sau khi lượng tử hóa | CPU |
 | TTS | `hexgrad/Kokoro-82M` qua gói `kokoro-onnx` | ~0,3 GB RAM | CPU |
@@ -59,7 +59,11 @@ docker run --rm --gpus all \
 
 **Lưu ý về wav2vec2:** bản này là mô hình *large* (~317M tham số), không phải base — nó nhận diện âm vị IPA nên là thứ dùng được ngay cho GOP. Chạy thẳng ở FP32 trên CPU sẽ mất khoảng 1,5 giây cho 5 giây audio, quá chậm. **Bắt buộc phải xuất ONNX rồi lượng tử hóa động sang INT8**: dung lượng còn khoảng 320MB và thời gian xuống ~0,5 giây. Bước lượng tử hóa này là một phần của đặc tả, không phải tối ưu tùy chọn.
 
-**Lưu ý về tag Ollama:** tag model có thể đổi theo thời gian. Sau khi `ollama pull qwen3:4b`, chạy `ollama show qwen3:4b` để xác nhận đúng là `Q4_K_M` rồi ghi lại digest vào `docs/LICENSES.md`.
+**Lưu ý về LLM — đọc kỹ chỗ này.** Phải dùng bản **`Instruct-2507`**, không phải `qwen3:4b` gốc. Bản gốc là mô hình *lai có chế độ suy nghĩ*: nó tự phát ra khối `<think>…</think>` dài trước khi trả lời, cộng thêm 5–10 giây mỗi lượt và phá ràng buộc JSON schema. Lý do đầy đủ ở [`MODEL-RESEARCH.md`](./MODEL-RESEARCH.md) mục 2.
+
+Nếu Ollama có sẵn tag tương ứng thì dùng luôn; không thì tải GGUF từ `unsloth/Qwen3-4B-Instruct-2507-GGUF` và nạp qua Modelfile. Sau khi nạp, chạy `ollama show` để xác nhận đúng `Q4_K_M`, ghi digest vào `docs/LICENSES.md`, và **kiểm tra đầu ra không còn khối `<think>`**.
+
+Nếu vì lý do nào đó phải dùng bản lai, bắt buộc tắt chế độ suy nghĩ và kiểm tra lại đầu ra.
 
 ---
 
@@ -125,11 +129,13 @@ Bốn ranh giới bắt buộc giữ (chi tiết ở `PLAN-LOCAL.md` mục 10):
 
 | Phép thử | Đạt |
 |---|---|
-| `ollama run qwen3:4b` sinh token | **≥ 15 tok/s** (kỳ vọng 20–25). Dưới 10 là sai cấu hình offload |
+| LLM sinh token | **≥ 15 tok/s** (kỳ vọng 20–25). Dưới 10 là sai cấu hình offload. **Kiểm tra luôn: đầu ra không có khối `<think>`** |
 | faster-whisper `small` int8 chạy khi Ollama đã nạp model | Tổng VRAM **≤ 5,2 GB**, không OOM |
 | GOP trên 2 bản ghi cùng một câu — một đúng, một cố tình sai | Điểm âm vị bị đọc sai **thấp hơn rõ rệt** so với các âm còn lại |
 
 Cả ba đạt thì bắt đầu. Không đạt thì sửa trước, đừng xây tiếp lên nền lỗi.
+
+**Phép thử phụ, không chặn tiến độ:** thử `qwen3.5:4b` ở chế độ chỉ-văn-bản. Chạy trơn và nhanh hơn Instruct-2507 thì đổi; trục trặc thì bỏ qua, đừng mất thời gian. Xem `MODEL-RESEARCH.md` mục 3.
 
 ### Bốn cuối tuần
 

@@ -17,13 +17,14 @@ GTX 1060 6GB · 32GB RAM — không mua GPU mới.
 |---|---|
 | **[SPEC.md](docs/SPEC.md)** | **Đặc tả đã chốt.** Phiên bản ghim, tên model chính xác, giá trị cấu hình, ngân sách VRAM, ngưỡng nghiệm thu. Đọc cái này khi thi công |
 | [PLAN-LOCAL.md](docs/PLAN-LOCAL.md) | Lý do đằng sau từng lựa chọn: giới hạn Pascal, ranh giới Docker, lộ trình 4 cuối tuần, hướng nâng cấp GPU sau này |
+| [MODEL-RESEARCH.md](docs/MODEL-RESEARCH.md) | Khảo sát mô hình 8/2026: vì sao chọn Qwen3-4B-Instruct-2507, vì sao loại Gemma 4 E4B và các model chuyên Đông Nam Á |
 | [PLAN.md](docs/PLAN.md) | Đích đến dài hạn — bản nhiều người dùng trên GPU đời mới |
 
 ## Stack
 
 **Ứng dụng** — Next.js 15 (UI + API routes) · Prisma · **SQLite** · audio trên đĩa · chạy thẳng, không Docker
 
-**Tầng AI** — Ollama + Qwen3-4B `Q4_K_M` (GPU) · faster-whisper `small` int8 (GPU) ·
+**Tầng AI** — Ollama + **Qwen3-4B-Instruct-2507** `Q4_K_M` (GPU) · faster-whisper `small` int8 (GPU) ·
 wav2vec2 + GOP, ONNX INT8 (CPU) · Kokoro-82M (CPU) · Silero VAD (trình duyệt) · trong Docker
 
 > GTX 1060 là Pascal (CC 6.1): **vLLM không chạy** (cần ≥ 7.0) và **CUDA 13 đã bỏ Pascal** —

@@ -291,7 +291,7 @@ Vì đây là dự án thương mại, giấy phép không phải chuyện hình
 | Piper | MIT | ✅ | |
 | Silero VAD | MIT | ✅ | |
 | vLLM | Apache 2.0 | ✅ | |
-| Gemma 3 | Gemma Terms | ⚠️ | Cho phép thương mại nhưng **không phải giấy phép mở theo chuẩn OSI**, có điều khoản sử dụng bị cấm |
+| Gemma 3 | Gemma Terms | ⚠️ | Cho phép thương mại nhưng **không phải giấy phép mở theo chuẩn OSI**. Lưu ý: **Gemma 4 (03/2026) đã chuyển sang Apache 2.0** — xem `MODEL-RESEARCH.md` |
 | Llama 3.x / 4 | Llama Community | ⚠️ | Được, nếu dưới 700 triệu MAU, và phải ghi công "Built with Llama" |
 | XTTS-v2 | Coqui CPML | ❌ | Phi thương mại |
 | speechocean762 | Bộ mở | ⚠️ | Xác minh điều khoản trước khi dùng huấn luyện mô hình thương mại |
