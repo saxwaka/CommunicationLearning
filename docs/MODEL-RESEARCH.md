@@ -85,6 +85,44 @@ Chưa thấy finetune tiếng Việt nào trên nền Qwen3-4B hoặc Qwen3.5-4B
 
 **Kết luận:** không dùng finetune tiếng Việt. Nếu sau này cần tiếng Việt tốt hơn, cách hiệu quả hơn nhiều là **viết nội dung tĩnh cho tốt**, không phải đổi model.
 
+### MiniCPM5-1B — ứng viên theo hướng khác: đổi năng lực lấy VRAM
+
+[MiniCPM5-1B](https://huggingface.co/openbmb/MiniCPM5-1B) ra ngày 19/5/2026, là checkpoint đầu tiên của dòng MiniCPM5. Dense 1,08B tham số, kiến trúc `LlamaForCausalLM` 24 lớp, grouped-query attention, ngữ cảnh 131K. Có [GGUF chính thức](https://huggingface.co/openbmb/MiniCPM5-1B-GGUF).
+
+Điểm đáng chú ý: đạt trung bình **42,57** trên nhóm benchmark suy luận / kiến thức / code / bám chỉ dẫn / toán / logic / agentic, trong khi mức cao nhất của các model mở cùng cỡ 1B là **35,61**. Thế mạnh được nêu rõ là **tool use và bám chỉ dẫn** — đúng thứ app này cần.
+
+**Vì sao nó thú vị ở đây, và không phải vì nó giỏi hơn:**
+
+| | Qwen3-4B-Instruct-2507 | MiniCPM5-1B |
+|---|---|---|
+| VRAM ở Q4 | ~2,5 GB | **~0,7 GB** |
+| Tổng stack trên Windows | 4,8 / 6 GB | **~3,0 / 6 GB** |
+| Tốc độ sinh token trên 1060 | ~22 tok/s | ước **50–60 tok/s** |
+| Hạng năng lực | 4B | 1B |
+
+VRAM là ràng buộc chặt nhất của cả dự án, đặc biệt trên Windows nơi desktop và trình duyệt đã ăn mất 1GB. **Đổi LLM từ 2,5GB xuống 0,7GB là đòn bẩy VRAM lớn nhất còn lại** — lớn hơn cả việc hạ Whisper từ `small` xuống `base`.
+
+Với 1,8GB dôi ra có thể: nâng Whisper lên `medium`, hoặc đẩy luôn wav2vec2 GOP lên GPU, hoặc đơn giản là thở được trên Windows.
+
+**Nhưng đây là hạ một hạng năng lực.** "SOTA nhóm 1B" không có nghĩa là bằng một model 4B tốt. Với công việc hẹp ở mục 1 thì *có thể* đủ — nhưng phần sửa lỗi ngữ pháp của người học và sinh câu tiếng Anh ngắn tự nhiên là chỗ model 1B hay đuối.
+
+**Hai lưu ý kỹ thuật:**
+
+- MiniCPM5-1B **cũng là mô hình lai có chế độ suy nghĩ**, với template `<think>` bật/tắt qua `enable_thinking`. Dính đúng cái bẫy ở mục 2 — phải tắt và kiểm tra đầu ra.
+- Giấy phép **chưa xác minh**. Trước khi đưa vào phải tra và ghi vào `docs/LICENSES.md`, theo đúng quy trình ở `PLAN.md` mục 7.
+
+**Quyết định: không đổi chốt bây giờ, nhưng đây là ứng viên số một để thử ở cuối tuần 3.**
+
+Lý do không đổi ngay: chưa có gì để đo. "1B có đủ cho việc này không" là câu hỏi thực nghiệm, không phải câu hỏi tranh luận — và `eval/cases.json` (`SPEC.md` mục 6.1) sinh ra đúng để trả lời loại câu hỏi này. Có 30–50 ví dụ rồi thì so hai model mất 10 phút và ra một con số.
+
+**Quy tắc quyết định, ghi sẵn để khỏi phân vân sau:**
+
+| Tình huống | Làm gì |
+|---|---|
+| Windows báo VRAM chạm ngưỡng 5,5GB | Đổi sang MiniCPM5-1B **trước tiên**, trước khi hạ Whisper |
+| Cuối tuần 3, tỉ lệ phân nhánh đúng của 1B **≥ 95%** so với 4B | Đổi luôn — lấy VRAM và tốc độ, không mất gì |
+| Thấp hơn | Giữ Qwen3-4B-Instruct-2507 |
+
 ### SmolLM3-3B — đáng biết, chưa cần
 
 3B, hoàn toàn mở, được ghi nhận vượt Llama-3.2-3B và Qwen2.5-3B ở cùng cỡ. Nhẹ hơn Qwen3-4B khoảng 0,7GB. Nhưng độ phủ đa ngữ hẹp hơn và không có lợi thế rõ ràng cho công việc ở mục 1. Ghi lại làm phương án nếu VRAM căng hơn dự kiến.
@@ -116,7 +154,9 @@ Qwen3.5 có bản **35B-A3B** — Mixture-of-Experts, 35B tổng nhưng chỉ 3B
 
 **Thử thêm ở buổi tối số 0 (không chặn tiến độ):** Qwen3.5-4B ở chế độ chỉ-văn-bản. Chạy trơn và nhanh hơn thì đổi.
 
-**Để dành khi cần:** Qwen3.5-35B-A3B với expert đẩy sang RAM, nếu 4B tỏ ra không đủ.
+**Để dành khi cần:**
+- **MiniCPM5-1B** nếu VRAM căng, hoặc nếu eval cho thấy 1B đủ dùng — ứng viên số một để thử ở cuối tuần 3.
+- **Qwen3.5-35B-A3B** với expert đẩy sang RAM, nếu 4B tỏ ra *không đủ* thông minh.
 
 **Đã loại:** Gemma 4 E4B (4,98GB, không vừa) · SEA-LION v3, Sailor2, SeaLLM (8B trở lên) · các finetune tiếng Việt (nền cũ, cỡ lớn) · Sailor2-1B (quá yếu).
 

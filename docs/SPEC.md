@@ -207,6 +207,8 @@ Desktop Windows và trình duyệt ăn thêm VRAM, nên bảng ở mục 4 phả
 
 Ngưỡng cảnh báo trên Windows: `nvidia-smi` báo quá **5,5 GB** là cần xem lại.
 
+**Nếu VRAM căng, đòn bẩy lớn nhất là đổi LLM, không phải hạ Whisper.** MiniCPM5-1B chiếm ~0,7GB thay vì ~2,5GB, đưa tổng stack từ 4,8 xuống ~3,0 GB. Đây là việc thử ở cuối tuần 3 khi đã có `eval/cases.json` để đo — xem [`MODEL-RESEARCH.md`](./MODEL-RESEARCH.md).
+
 ### 9.2 Không bind mount thư mục audio
 
 Bind mount từ ổ Windows vào container WSL2 đi qua lớp dịch file rất chậm. Nên **bỏ hẳn**:
