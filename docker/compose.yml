@@ -32,5 +32,19 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
 
+  # Container dùng một lần, không chạy thường trực. Xuất wav2vec2 sang ONNX
+  # vào volume dùng chung, để ảnh runtime không phải mang theo PyTorch.
+  #   docker compose -f docker/compose.yml run --rm tools
+  tools:
+    build:
+      context: ../services/speech/tools
+    volumes:
+      - model-cache:/cache
+      - hf-cache:/root/.cache/huggingface
+    environment:
+      GOP_DIR: /cache/gop
+    profiles: ["tools"]
+
 volumes:
+  hf-cache:
   model-cache:

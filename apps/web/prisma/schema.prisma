@@ -24,3 +24,27 @@ model Recording {
 
   @@index([createdAt])
 }
+
+model Assessment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  audioKey   String
+  targetText String
+
+  sentenceGop Float
+  worstGop    Float
+  phoneCount  Int
+  words       String // JSON: [{text, gop, phones:[{phone, gop, heardAs, ...}]}]
+
+  // Bản ghi dùng để hiệu chỉnh ngưỡng, không phải bài luyện.
+  isCalibration Boolean @default(false)
+
+  // Bắt buộc, không phải tuỳ chọn: khi đổi model chấm, điểm cũ mất ý nghĩa
+  // so sánh nếu không biết nó sinh ra từ đâu. Xem docs/SPEC.md mục 8.
+  modelVersion String?
+  latencyMs    Int?
+
+  @@index([createdAt])
+  @@index([isCalibration])
+}

@@ -12,6 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 python3-pip libsndfile1 curl ca-certificates \
+      espeak-ng libespeak-ng1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv

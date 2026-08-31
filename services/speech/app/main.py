@@ -7,11 +7,11 @@ import logging
 import os
 import tempfile
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from . import config, stt, tts
+from . import assess as assess_mod, config, phoneme, stt, tts
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("speech")
@@ -20,6 +20,10 @@ app = FastAPI(title="speech-service", version="0.1.0")
 
 MAX_BYTES = 10 * 1024 * 1024
 
+from .gop import AlignmentError  # noqa: E402
+
+gop_errors = (AlignmentError, ValueError)
+
 
 @app.get("/health")
 def health() -> dict:
@@ -27,6 +31,7 @@ def health() -> dict:
         "ok": True,
         "whisper": stt.loaded_as() or f"{config.WHISPER_MODEL} (chưa nạp)",
         "tts_ready": tts.available(),
+        "gop_ready": phoneme.available(),
     }
 
 
@@ -51,6 +56,40 @@ async def transcribe(file: UploadFile = File(...)) -> dict:
         os.unlink(tmp.name)
 
     return {"text": text, "model": model, "duration_ms": duration_ms}
+
+
+@app.post("/assess")
+async def assess(file: UploadFile = File(...), text: str = Form(...)) -> dict:
+    """Chấm phát âm: audio + câu đích → điểm từng từ, từng âm vị."""
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "Bản ghi rỗng.")
+    if len(data) > MAX_BYTES:
+        raise HTTPException(413, "Bản ghi quá dài.")
+    if not text.strip():
+        raise HTTPException(400, "Thiếu câu đích.")
+
+    from faster_whisper.audio import decode_audio
+
+    suffix = os.path.splitext(file.filename or "")[1] or ".webm"
+    tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    try:
+        tmp.write(data)
+        tmp.close()
+        waveform = decode_audio(tmp.name, sampling_rate=16000)
+        result = assess_mod.assess(waveform, text)
+    except phoneme.ModelsMissing as err:
+        raise HTTPException(503, str(err)) from err
+    except gop_errors as err:
+        # Audio quá ngắn so với câu đích, hoặc không căn chỉnh được.
+        raise HTTPException(422, str(err)) from err
+    except Exception as err:
+        log.exception("Chấm phát âm thất bại")
+        raise HTTPException(500, f"Chấm phát âm thất bại: {err}") from err
+    finally:
+        os.unlink(tmp.name)
+
+    return result
 
 
 class TtsRequest(BaseModel):

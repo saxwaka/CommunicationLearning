@@ -8,19 +8,22 @@ mô hình mã nguồn mở** trên máy cá nhân. Người dùng hiện tại: 
 
 ## Trạng thái
 
-**Cuối tuần 1 đã xong** — ghi âm → chép lời → nghe giọng mẫu.
+**Cuối tuần 1 và 2 đã xong** — ghi âm → chép lời → nghe giọng mẫu, và chấm phát âm
+tới từng âm vị với ngưỡng hiệu chỉnh theo giọng của chính bạn.
 Chạy trên phần cứng hiện có: Ryzen 5 5600 · GTX 1060 6GB · 32GB RAM · **Windows**.
 
 ```powershell
 pnpm install
 pnpm speech:up     # speech-service trong Docker
+docker compose -f docker/compose.yml --profile tools run --rm tools   # xuất ONNX, một lần
 pnpm db:push
-pnpm dev           # http://localhost:3000
+pnpm dev           # http://localhost:3000  →  /calibrate trước, rồi luyện
 ```
 
 Hướng dẫn đầy đủ, kể cả bước tải trọng số Kokoro: [`docs/SETUP-WINDOWS.md`](docs/SETUP-WINDOWS.md).
 
-Tiếp theo: cuối tuần 2 — chấm phát âm bằng GOP.
+Tiếp theo: cuối tuần 3 — hội thoại với Ollama, và đo `eval/cases.json`
+để quyết định giữa Qwen3-4B-Instruct-2507 và MiniCPM5-1B.
 
 ## Tài liệu
 
@@ -46,7 +49,9 @@ wav2vec2 + GOP, ONNX INT8 (CPU) · Kokoro-82M (CPU) · Silero VAD (trình duyệ
 
 ```
 apps/web/           Next.js 15 — UI, API routes, Prisma/SQLite. Chạy native Windows
-services/speech/    FastAPI — faster-whisper, Kokoro. Chạy trong Docker, stateless
+services/speech/    FastAPI — faster-whisper, wav2vec2+GOP, Kokoro. Docker, stateless
+  app/gop.py        thuật toán GOP thuần numpy, có test
+  tests/            pytest — chạy được không cần model, không cần GPU
 docker/compose.yml  Chỉ speech-service. Ollama native, Next.js native
 data/               app.db, audio/, tts-cache/ — do Next.js sở hữu
 docs/               Kế hoạch và đặc tả
@@ -54,3 +59,9 @@ docs/               Kế hoạch và đặc tả
 
 Hai ranh giới quan trọng nhất, giữ từ đầu để đổi model về sau không phải viết lại:
 `apps/web/src/lib/speech.ts` (`SpeechProvider`) và `apps/web/src/lib/storage.ts`.
+
+Chạy test phần thuật toán chấm phát âm:
+
+```bash
+cd services/speech && python -m pytest tests/ -q
+```

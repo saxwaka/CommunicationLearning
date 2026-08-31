@@ -1,6 +1,6 @@
-# Chạy trên Windows — cuối tuần 1
+# Chạy trên Windows — cuối tuần 1 và 2
 
-> Mục tiêu: **nói một câu, thấy nó hiện ra thành chữ, bấm nghe lại giọng mẫu.**
+> Mục tiêu: **nói một câu và thấy nó thành chữ** (CT1), rồi **đọc sai một từ và thấy đúng từ đó đỏ lên** (CT2).
 > Cấu hình đích: Ryzen 5 5600 · GTX 1060 6GB · 32GB RAM · Windows.
 > Giá trị cấu hình đã chốt ở [`SPEC.md`](./SPEC.md).
 
@@ -66,6 +66,22 @@ curl http://127.0.0.1:8000/health
 Mong đợi `"tts_ready": true`. Whisper nạp lười ở lần chép lời đầu tiên nên
 `"whisper"` lúc này còn ghi *chưa nạp* — đúng, không phải lỗi.
 
+### 1b. Xuất mô hình chấm phát âm — một lần
+
+Cuối tuần 2 cần thêm wav2vec2 nhận âm vị. Trọng số phát hành ở dạng PyTorch, nhưng ảnh
+runtime cố ý không có PyTorch (xem `PLAN-LOCAL.md` mục 3.3), nên việc xuất ONNX chạy trong
+một container riêng dùng một lần rồi thôi:
+
+```powershell
+docker compose -f docker/compose.yml --profile tools run --rm tools
+docker compose -f docker/compose.yml restart speech
+```
+
+Container `tools` tải PyTorch (~2,5GB, chỉ lần đầu), tải model, xuất ONNX vào volume dùng
+chung rồi tự xoá. Ảnh `speech` không hề bị đụng tới.
+
+Kiểm tra `curl http://127.0.0.1:8000/health` phải thấy `"gop_ready": true`.
+
 ---
 
 ## 2. Dựng web
@@ -81,21 +97,52 @@ Mở `http://localhost:3000`, **bấm giữ** nút, nói một câu tiếng Anh 
 
 ---
 
-## 3. Nghiệm thu cuối tuần 1
+## 3. Hiệu chỉnh ngưỡng — làm trước khi luyện
+
+Vào `http://localhost:3000/calibrate`. Đọc 20 câu **ở trạng thái tốt nhất của bạn**:
+đọc chậm, rõ, phòng yên tĩnh. Xong bấm *Tính ngưỡng từ giọng của tôi*.
+
+GOP là số âm không có thang đo, nên ngưỡng lấy từ giọng người khác sẽ sai. Hệ thống lấy
+phân bố điểm của chính bạn rồi cắt ở phân vị 25 và 10. Mất khoảng mười phút, làm một lần.
+
+Chưa hiệu chỉnh thì app **không tô màu** — chỉ hiện điểm thô khi bấm vào từ. Đó là cố ý:
+im lặng tốt hơn tô sai.
+
+Kết quả ghi ở `data/gop-calibration.json`, xoá file đó là hiệu chỉnh lại từ đầu.
+
+---
+
+## 4. Nghiệm thu
+
+**Cuối tuần 1**
 
 | Kiểm tra | Đạt |
 |---|---|
-| Nói một câu, thấy nó thành chữ | ✅ |
+| Nói một câu ở `/freetalk`, thấy nó thành chữ | ✅ |
 | Bấm "Nghe giọng mẫu", nghe được | ✅ |
 | Lượt thứ hai trở đi nhanh hơn hẳn lượt đầu | Whisper đã nạp sẵn |
 | `nvidia-smi` khi đang chép lời | **≤ 5,5GB** trên Windows |
 
-Con số độ trễ hiện ngay cạnh câu chép lời. Lượt đầu chậm vì phải nạp model — bỏ qua,
+**Cuối tuần 2**
+
+| Kiểm tra | Đạt |
+|---|---|
+| Đọc đúng cả câu | phần lớn từ xanh |
+| **Cố tình đọc sai một từ** | **đúng từ đó đỏ lên** |
+| Bấm vào từ đỏ | thấy từng âm vị, và âm sai ghi *nghe giống /…/* |
+| Đọc lại đúng từ đó | nó chuyển xanh |
+
+Một điểm cần biết khi đọc kết quả: **âm ngay sau âm đọc sai thường cũng bị tụt điểm.**
+Căn chỉnh cưỡng bức phải nhét những khung âm thanh không khớp vào đâu đó, nên chúng trôi
+sang âm kế bên. Vì vậy giao diện khoanh đậm **âm tệ nhất** — đó mới là chỗ cần sửa,
+âm kế bên chỉ là vạ lây.
+
+Con số độ trễ hiện ngay cạnh kết quả. Lượt đầu chậm vì phải nạp model — bỏ qua,
 tính từ lượt thứ hai.
 
 ---
 
-## 4. Khi có trục trặc
+## 5. Khi có trục trặc
 
 | Hiện tượng | Xử lý |
 |---|---|
@@ -105,14 +152,17 @@ tính từ lượt thứ hai.
 | Hết VRAM | Tắt tăng tốc phần cứng ở trình duyệt. Vẫn không đủ thì đặt `WHISPER_MODEL: base` trong `docker/compose.yml` |
 | Không truy cập được micro | Phải mở qua `localhost`, không phải IP |
 | Docker ăn hết RAM | Đặt `.wslconfig` ở bước 0, rồi `wsl --shutdown` |
+| `Chưa có mô hình chấm phát âm` | Chạy bước 1b |
+| Chấm phát âm báo 422 | Audio ngắn hơn câu đích. Đọc đủ câu, đừng thả nút sớm |
+| Một từ luôn đỏ dù đọc đúng | Có thể espeak sinh âm ngoài vocab — bấm vào từ, xem dòng `bỏ qua:` |
+| Mọi từ đều đỏ | Ngưỡng hiệu chỉnh từ bản ghi kém. Xoá và hiệu chỉnh lại ở `/calibrate` |
 
 ---
 
-## 5. Những gì cuối tuần 1 chưa có
+## 6. Những gì chưa có
 
 Đúng phạm vi, không phải thiếu sót:
 
-- **Chấm phát âm** — cuối tuần 2.
 - **Hội thoại với Ollama** — cuối tuần 3. Chưa cần cài Ollama lúc này.
 - **Flashcard SRS** — cuối tuần 4.
 - **Silero VAD trong trình duyệt** — hiện là bấm-giữ-để-nói. VAD chỉ cần khi hội thoại

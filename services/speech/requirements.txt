@@ -7,3 +7,5 @@ faster-whisper==1.1.1
 kokoro-onnx==0.4.9
 soundfile==0.13.0
 numpy==2.2.1
+onnxruntime==1.20.1
+phonemizer==3.3.0

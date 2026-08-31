@@ -15,5 +15,11 @@ KOKORO_VOICES = os.path.join(KOKORO_DIR, "voices-v1.0.bin")
 TTS_VOICE = os.getenv("TTS_VOICE", "af_heart")
 TTS_SPEED = float(os.getenv("TTS_SPEED", "0.85"))
 
+# Chấm phát âm — wav2vec2 nhận âm vị, ONNX trên CPU.
+GOP_DIR = os.getenv("GOP_DIR", "/cache/gop")
+GOP_ONNX = os.path.join(GOP_DIR, "model.onnx")
+GOP_VOCAB = os.path.join(GOP_DIR, "vocab.json")
+GOP_HF_ID = os.getenv("GOP_HF_ID", "facebook/wav2vec2-lv-60-espeak-cv-ft")
+
 # Chừa 1 nhân cho hệ điều hành (Ryzen 5 5600 có 6 nhân).
 OMP_NUM_THREADS = int(os.getenv("OMP_NUM_THREADS", "5"))
