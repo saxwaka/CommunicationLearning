@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(npx prisma *)",
+      "Bash(node -e *)",
+
+      "Bash(docker compose *)",
+      "Bash(docker ps*)",
+      "Bash(docker images*)",
+      "Bash(docker logs *)",
+      "Bash(docker volume ls*)",
+
+      "Bash(nvidia-smi*)",
+
+      "Bash(python -m pytest*)",
+      "Bash(python3 -m pytest*)",
+      "Bash(pytest*)",
+
+      "Bash(curl http://127.0.0.1:*)",
+      "Bash(curl http://localhost:*)",
+      "Bash(curl -s http://127.0.0.1:*)",
+      "Bash(curl -s http://localhost:*)",
+
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git fetch*)",
+      "Bash(git pull*)",
+      "Bash(git push*)",
+      "Bash(git checkout *)",
+      "Bash(git stash*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+
+      "Bash(docker system prune*)",
+      "Bash(docker volume rm *)",
+      "Bash(docker volume prune*)"
+    ]
+  }
+}

@@ -139,6 +139,17 @@ theo âm vị, ngưỡng hiệu chỉnh từ 20 câu của chính người dùng
 
 ---
 
+## Quyền chạy lệnh
+
+`.claude/settings.json` đã cho sẵn quyền chạy `pnpm`, `docker compose`, `pytest`,
+`nvidia-smi`, `curl` tới localhost và các lệnh git thường dùng — không phải bấm duyệt từng lần.
+
+Cố ý **không** cho sẵn: `docker run` (mount được thư mục máy chủ) và `git push --force`,
+`git reset --hard`, `docker volume rm` (mất việc, hoặc mất cache model 3GB phải tải lại).
+Những lệnh đó vẫn chạy được nhưng phải bấm duyệt — đúng như mong muốn.
+
+---
+
 ## Trước khi báo là xong
 
 1. `pnpm typecheck` và `pnpm build` phải xanh.
