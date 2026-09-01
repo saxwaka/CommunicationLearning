@@ -29,6 +29,7 @@ Tiếp theo: cuối tuần 3 — hội thoại với Ollama, và đo `eval/cases
 
 | Tài liệu | Nội dung |
 |---|---|
+| [CLAUDE.md](CLAUDE.md) | Bối cảnh cho Claude Code — ràng buộc phần cứng, ranh giới kiến trúc, việc tiếp theo. Tự nạp mỗi phiên |
 | **[SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md)** | **Cách chạy.** Chuẩn bị máy, dựng speech-service, nghiệm thu, xử lý trục trặc |
 | **[SPEC.md](docs/SPEC.md)** | **Đặc tả đã chốt.** Phiên bản ghim, tên model chính xác, giá trị cấu hình, ngân sách VRAM, ngưỡng nghiệm thu. Đọc cái này khi thi công |
 | [PLAN-LOCAL.md](docs/PLAN-LOCAL.md) | Lý do đằng sau từng lựa chọn: giới hạn Pascal, ranh giới Docker, lộ trình 4 cuối tuần, hướng nâng cấp GPU sau này |
